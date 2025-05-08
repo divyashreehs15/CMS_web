@@ -44,7 +44,7 @@ export default function JailerDashboard() {
                 <TableBody>
                   <TableRow>
                     <TableCell>P001</TableCell>
-                    <TableCell>John Doe</TableCell>
+                    <TableCell>Karthik Y H</TableCell>
                     <TableCell>35</TableCell>
                     <TableCell>A-101</TableCell>
                     <TableCell>Active</TableCell>
@@ -90,7 +90,7 @@ export default function JailerDashboard() {
                 <TableBody>
                   <TableRow>
                     <TableCell>P001</TableCell>
-                    <TableCell>John Doe</TableCell>
+                    <TableCell>Karthik Y H</TableCell>
                     <TableCell>Kitchen</TableCell>
                     <TableCell>8</TableCell>
                     <TableCell>$50</TableCell>
@@ -133,7 +133,7 @@ export default function JailerDashboard() {
                 <TableBody>
                   <TableRow>
                     <TableCell>P001</TableCell>
-                    <TableCell>John Doe</TableCell>
+                    <TableCell>Karthik Y H</TableCell>
                     <TableCell>Hypertension</TableCell>
                     <TableCell>Lisinopril</TableCell>
                     <TableCell>2024-03-15</TableCell>
@@ -177,7 +177,7 @@ export default function JailerDashboard() {
                 <TableBody>
                   <TableRow>
                     <TableCell>P001</TableCell>
-                    <TableCell>John Doe</TableCell>
+                    <TableCell>Karthik Y H</TableCell>
                     <TableCell>Jane Doe</TableCell>
                     <TableCell>Spouse</TableCell>
                     <TableCell>2024-03-25</TableCell>
@@ -222,7 +222,7 @@ export default function JailerDashboard() {
                 <TableBody>
                   <TableRow>
                     <TableCell>P001</TableCell>
-                    <TableCell>John Doe</TableCell>
+                    <TableCell>Karthik Y H</TableCell>
                     <TableCell>CR-2024-001</TableCell>
                     <TableCell>District Court</TableCell>
                     <TableCell>2024-04-01</TableCell>

@@ -11,7 +11,9 @@ import {
   Shield,
   Users,
   Settings,
-  LifeBuoy
+  LifeBuoy,
+  Projector,
+  Sofa,
 } from "lucide-react";
 import {
   Sidebar,
@@ -37,11 +39,11 @@ export const navigationData = {
     {
       label: "Jailer Dashboard",
       items: [
-        { name: "Prisoners", url: "/app/jailer?section=prisoners", icon: UserPlus },
-        { name: "Wages", url: "/app/jailer?section=wages", icon: DollarSign },
-        { name: "Medical Records", url: "/app/jailer?section=medical", icon: Stethoscope },
-        { name: "Appointments", url: "/app/jailer?section=appointments", icon: Calendar },
-        { name: "Court Hearings", url: "/app/jailer?section=hearings", icon: Gavel },
+        { name: "Prisoners", url: "/app/jailer/prisoners", icon: UserPlus },
+        { name: "Appointments", url: "/app/jailer/appointments", icon: Projector },
+        { name: "Hearings", url: "/app/jailer/hearings", icon: Sofa },
+        { name: "Medical", url: "/app/jailer/medical", icon: Stethoscope },
+        { name: "Wages", url: "/app/jailer/wages", icon: DollarSign },
       ],
     },
     {

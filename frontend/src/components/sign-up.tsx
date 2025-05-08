@@ -69,7 +69,7 @@ export default function SignUpPage() {
                 required
                 name="name"
                 id="name"
-                placeholder="John Doe"
+                placeholder="Karthik Y H"
               />
             </div>
 

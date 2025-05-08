@@ -30,7 +30,7 @@ export default function FamilyDashboard() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Name:</span>
-                      <span className="font-medium">John Doe</span>
+                      <span className="font-medium">Karthik Y H</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">ID:</span>
