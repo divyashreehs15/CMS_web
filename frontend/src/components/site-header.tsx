@@ -1,6 +1,5 @@
 "use client";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/auth-context";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -9,119 +8,51 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { navigationData } from "./app-sidebar";
+import { usePathname } from "next/navigation";
 import { useMemo } from "react";
 import React from "react";
 
-interface SiteHeaderProps {
-  pathname?: string;
-}
+export function SiteHeader() {
+  const pathname = usePathname();
+  const { user } = useAuth();
 
-export function SiteHeader({ pathname = "" }: SiteHeaderProps) {
-  
-  const breadcrumbItems = useMemo(() => {
+  const breadcrumbs = useMemo(() => {
+    if (!pathname) return [];
     
-    const items = [{ name: "Overview", url: "/app" }];
+    const paths = pathname.split("/").filter(Boolean);
+    return paths.map((path, index) => {
+      const href = `/${paths.slice(0, index + 1).join("/")}`;
+      const isLast = index === paths.length - 1;
+      const label = path.charAt(0).toUpperCase() + path.slice(1);
 
-    
-    if (pathname === "/app") return items;
-
-    
-    if (pathname === "/") return [];
-
-    
-    const segments = pathname.split("/").filter(Boolean);
-
-   
-    const startIndex = segments[0] === "app" ? 1 : 0;
-
-   
-    let currentPath = "/app";
-
-    
-    for (let i = startIndex; i < segments.length; i++) {
-      const segment = segments[i];
-      currentPath += `/${segment}`;
-
-     
-      let foundItem: any = null;
-
- 
-      navigationData.navMain.forEach(section => {
-        section.items.forEach(item => {
-          if (item.url === currentPath) {
-            foundItem = item;
-          }
-        });
-      });
-
-     
-      if (!foundItem) {
-        navigationData.navSecondary.forEach(item => {
-          if (item.url === currentPath) {
-            foundItem = { name: item.title, url: item.url };
-          }
-        });
-      }
-
-  
-      if (foundItem) {
-        items.push({ name: foundItem.name, url: foundItem.url });
-      } else {
-        
-        items.push({
-          name:
-            segment.charAt(0).toUpperCase() +
-            segment.slice(1).replace(/-/g, " "),
-          url: currentPath,
-        });
-      }
-    }
-
-    return items;
+      return {
+        href,
+        label,
+        isLast,
+      };
+    });
   }, [pathname]);
 
-
-  const pageTitle =
-    breadcrumbItems.length > 0
-      ? breadcrumbItems[breadcrumbItems.length - 1].name
-      : "Dashboard";
+  if (!user) return null;
 
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
-        />
-        <div className="flex flex-col">
-
-          <Breadcrumb className="hidden md:block">
-            <BreadcrumbList>
-              {breadcrumbItems.map((item, index) => {
-                const isLastItem = index === breadcrumbItems.length - 1;
-
-                return (
-                  <React.Fragment key={item.url}>
-                    <BreadcrumbItem>
-                      {isLastItem ? (
-                        <BreadcrumbPage>{item.name}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink href={item.url}>
-                          {item.name}
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-
-                    {!isLastItem && <BreadcrumbSeparator />}
-                  </React.Fragment>
-                );
-              })}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-      </div>
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:px-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          {breadcrumbs.map((crumb, index) => (
+            <React.Fragment key={crumb.href}>
+              <BreadcrumbItem>
+                {crumb.isLast ? (
+                  <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink href={crumb.href}>{crumb.label}</BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!crumb.isLast && <BreadcrumbSeparator />}
+            </React.Fragment>
+          ))}
+        </BreadcrumbList>
+      </Breadcrumb>
     </header>
   );
 }

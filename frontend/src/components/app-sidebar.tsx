@@ -1,114 +1,142 @@
 "use client";
+import { useAuth } from "@/contexts/auth-context";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
 import {
-  UserPlus,
+  Users,
+  Calendar,
+  FileText,
   DollarSign,
   Stethoscope,
-  Calendar,
-  Gavel,
-  FileText,
-  Clock,
+  Home,
   LogOut,
-  Shield,
-  Users,
-  Settings,
-  LifeBuoy,
-  Projector,
-  Sofa,
+  BarChart3,
+  UserCircle,
 } from "lucide-react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { NavMain } from "./nav-main";
-import { NavSecondary } from "./nav-secondary";
-import { NavUser } from "./nav-user";
-import Link from "next/link";
 
-export const navigationData = {
-  user: {
-    name: "Prison Management",
-    email: "admin@prison.com",
-    avatar: "https://github.com/shadcn.png",
-  },
-  navMain: [
+export function AppSidebar() {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+
+  if (!user) return null;
+
+  const jailerNavItems = [
     {
-      label: "Jailer Dashboard",
-      items: [
-        { name: "Prisoners", url: "/app/jailer/prisoners", icon: UserPlus },
-        { name: "Appointments", url: "/app/jailer/appointments", icon: Projector },
-        { name: "Hearings", url: "/app/jailer/hearings", icon: Sofa },
-        { name: "Medical", url: "/app/jailer/medical", icon: Stethoscope },
-        { name: "Wages", url: "/app/jailer/wages", icon: DollarSign },
-      ],
+      title: "Dashboard",
+      href: "/app/jailer",
+      icon: Home,
     },
     {
-      label: "Family Dashboard",
-      items: [
-        { name: "Prisoner Information", url: "/app/family?section=prisoner-info", icon: FileText },
-        { name: "Visit Appointments", url: "/app/family?section=appointments", icon: Calendar },
-        { name: "Court Hearings", url: "/app/family?section=hearings", icon: Clock },
-      ],
+      title: "Prisoners",
+      href: "/app/jailer/prisoners",
+      icon: Users,
     },
     {
-      label: "Settings",
-      items: [
-        { name: "Settings", url: "/app/settings", icon: Settings },
-      ],
+      title: "Appointments",
+      href: "/app/jailer/appointments",
+      icon: Calendar,
     },
-  ],
-  navSecondary: [
-    { title: "Support", url: "/app/support", icon: LifeBuoy },
-  ],
-};
+    {
+      title: "Medical Records",
+      href: "/app/jailer/medical",
+      icon: Stethoscope,
+    },
+    {
+      title: "Wages",
+      href: "/app/jailer/wages",
+      icon: DollarSign,
+    },
+    {
+      title: "Court Hearings",
+      href: "/app/jailer/court",
+      icon: FileText,
+    },
+    {
+      title: "Analytics",
+      href: "/app/jailer/analytics",
+      icon: BarChart3,
+    },
+  ];
 
-interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  pathname?: string;
-  role?: "jailer" | "family";
-}
+  const familyNavItems = [
+    {
+      title: "Dashboard",
+      href: "/app/family/analytics",
+      icon: Home,
+    },
+    {
+      title: "Prisoner Info",
+      href: "/app/family/prisoner-info",
+      icon: UserCircle,
+    },
+    {
+      title: "Appointments",
+      href: "/app/family/appointments",
+      icon: Calendar,
+    },
+    {
+      title: "Wages",
+      href: "/app/family/wages",
+      icon: DollarSign,
+    },
+    {
+      title: "Analytics",
+      href: "/app/family/analytics",
+      icon: BarChart3,
+    },
+  ];
 
-export function AppSidebar({ pathname = "", role = "jailer", ...props }: AppSidebarProps) {
-  // Filter navigation items based on role
-  const filteredNavMain = navigationData.navMain.filter(section => {
-    if (section.label === "Jailer Dashboard") return role === "jailer";
-    if (section.label === "Family Dashboard") return role === "family";
-    return true; // Always show Settings
-  });
+  const navItems = user.role === "jailer" ? jailerNavItems : familyNavItems;
 
   return (
-    <Sidebar variant="inset" collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link href={role === "jailer" ? "/app/jailer" : "/app/family"}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  {role === "jailer" ? <Shield className="size-4" /> : <Users className="size-4" />}
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Prison Management</span>
-                  <span className="truncate text-xs">{role === "jailer" ? "Jailer Portal" : "Family Portal"}</span>
-                </div>
+    <div className="flex h-screen w-64 flex-col border-r bg-background">
+      <div className="border-b p-4">
+        <h2 className="text-lg font-semibold tracking-tight">
+          Prison Management
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {user.role === "jailer" ? "Jailer Portal" : "Family Portal"}
+        </p>
+      </div>
+      <ScrollArea className="flex-1 px-2 py-2">
+        <div className="space-y-1">
+          {navItems.map((item) => (
+            <Button
+              key={item.href}
+              variant={pathname === item.href ? "secondary" : "ghost"}
+              className={cn(
+                "w-full justify-start",
+                pathname === item.href && "bg-muted font-medium"
+              )}
+              asChild
+            >
+              <Link href={item.href}>
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.title}
               </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={filteredNavMain} currentPath={pathname} />
-        <NavSecondary
-          items={navigationData.navSecondary}
-          className="mt-auto"
-          currentPath={pathname}
-        />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={navigationData.user} />
-      </SidebarFooter>
-    </Sidebar>
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
+      <div className="border-t p-4">
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <p className="text-sm font-medium">{user.name}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={logout}
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

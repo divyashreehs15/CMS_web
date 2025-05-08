@@ -2,85 +2,87 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiService, User } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+
+interface LoginResponse {
+  token: string;
+  user: User;
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<"jailer" | "family">("jailer");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (role: "jailer" | "family") => {
-    setLoading(true);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
     try {
-      // Here you would typically make an API call to authenticate
-      // For now, we'll just redirect based on role
-      router.push(role === "jailer" ? "/app/jailer" : "/app/family");
-    } catch (error) {
-      console.error("Login failed:", error);
+      const response = await apiService.auth.login(username, password) as LoginResponse;
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+      
+      // Redirect based on role
+      if (response.user.role === "jailer") {
+        router.push("/app/jailer/analytics");
+      } else {
+        router.push("/app/family/analytics");
+      }
+      
+      toast.success("Login successful!");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Login failed. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="container flex items-center justify-center min-h-screen py-8">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">Prison Management System</CardTitle>
+          <CardTitle>Prison Management System</CardTitle>
+          <CardDescription>Login to access the system</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="jailer" className="w-full">
+          <Tabs defaultValue="jailer" value={activeTab} onValueChange={(value) => setActiveTab(value as "jailer" | "family")}>
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="jailer">
-                <Shield className="w-4 h-4 mr-2" />
-                Jailer Login
-              </TabsTrigger>
-              <TabsTrigger value="family">
-                <Users className="w-4 h-4 mr-2" />
-                Family Login
-              </TabsTrigger>
+              <TabsTrigger value="jailer">Jailer</TabsTrigger>
+              <TabsTrigger value="family">Family</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="jailer" className="mt-6">
-              <form className="space-y-4">
+            <TabsContent value={activeTab}>
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="jailer-email">Email</Label>
-                  <Input id="jailer-email" type="email" placeholder="Enter your email" />
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="jailer-password">Password</Label>
-                  <Input id="jailer-password" type="password" placeholder="Enter your password" />
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                 </div>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleLogin("jailer")}
-                  disabled={loading}
-                >
-                  Login as Jailer
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="family" className="mt-6">
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="family-email">Email</Label>
-                  <Input id="family-email" type="email" placeholder="Enter your email" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="family-password">Password</Label>
-                  <Input id="family-password" type="password" placeholder="Enter your password" />
-                </div>
-                <Button 
-                  className="w-full" 
-                  onClick={() => handleLogin("family")}
-                  disabled={loading}
-                >
-                  Login as Family Member
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Logging in..." : "Login"}
                 </Button>
               </form>
             </TabsContent>

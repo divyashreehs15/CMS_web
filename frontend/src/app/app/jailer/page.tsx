@@ -178,7 +178,7 @@ export default function JailerDashboard() {
                   <TableRow>
                     <TableCell>P001</TableCell>
                     <TableCell>Karthik Y H</TableCell>
-                    <TableCell>Jane Doe</TableCell>
+                    <TableCell>Suhaib Kng</TableCell>
                     <TableCell>Spouse</TableCell>
                     <TableCell>2024-03-25</TableCell>
                     <TableCell>14:00</TableCell>

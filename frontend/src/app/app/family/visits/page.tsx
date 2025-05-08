@@ -34,7 +34,7 @@ export default function VisitsPage() {
               <TableRow>
                 <TableCell>VR001</TableCell>
                 <TableCell>Karthik Y H</TableCell>
-                <TableCell>Jane Doe</TableCell>
+                <TableCell>Suhaib King</TableCell>
                 <TableCell>Spouse</TableCell>
                 <TableCell>2024-04-01</TableCell>
                 <TableCell>10:00 AM</TableCell>
