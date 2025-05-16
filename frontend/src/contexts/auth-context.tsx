@@ -33,7 +33,7 @@ export const AuthContext = createContext<AuthContextType>({
 // Demo credentials
 const DEMO_CREDENTIALS = {
   jailer: {
-    email: "karthik@love.com",
+    email: "karthik@demo.com",
     password: "karthik@LoveMansik",
     user: {
       id: "1",
@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout }}>
-      {children} Made by karthik Love
+      {children} 
     </AuthContext.Provider>
   );
 }
