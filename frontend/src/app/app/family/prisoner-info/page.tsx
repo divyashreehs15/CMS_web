@@ -1,370 +1,347 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, FileText, Heart, Briefcase, Scale, Award } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/auth-context";
+import { prisonersApi } from "@/lib/api";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
-// Mock data - replace with actual data from your backend
-const prisonerData = {
-  basicInfo: {
-    id: "P12345",
-    name: "John Doe",
-    age: 35,
-    gender: "Male",
-    cellNumber: "B-102",
-    admissionDate: "2023-06-15",
-    expectedReleaseDate: "2025-06-15",
-    status: "Incarcerated",
-    category: "Medium Security",
-  },
-  healthInfo: {
-    status: "Good",
-    lastCheckup: "2024-03-01",
-    conditions: ["None"],
-    medications: ["None"],
-    dietaryRestrictions: "None",
-  },
-  workInfo: {
-    currentAssignment: "Kitchen",
-    startDate: "2023-07-01",
-    hoursPerWeek: 30,
-    wage: "$15/hour",
-    performance: "Excellent",
-  },
-  legalInfo: {
-    caseNumber: "CR-2023-123",
-    sentence: "2 years",
-    remainingTime: "1 year, 3 months",
-    nextCourtDate: "2024-04-15",
-    paroleEligibility: "2024-12-15",
-  },
-  behaviorInfo: {
-    conduct: "Good",
-    lastIncident: "None",
-    privileges: ["Library Access", "Gym Access", "Educational Programs"],
-    restrictions: "None",
-  },
-  visitHistory: [
-    {
-      date: "2024-03-15",
-      duration: "1 hour",
-      type: "Regular Visit",
-      status: "Completed",
-    },
-    {
-      date: "2024-03-01",
-      duration: "45 minutes",
-      type: "Special Visit",
-      status: "Completed",
-    },
-    {
-      date: "2024-02-15",
-      duration: "1 hour",
-      type: "Regular Visit",
-      status: "Completed",
-    },
-  ],
-};
+interface Prisoner {
+  id: number;
+  prisoner_id: string;
+  name: string;
+  age: number;
+  gender: string;
+  cell_number: string;
+  admission_date: string;
+  expected_release_date: string;
+  status: string;
+  category: string;
+  health_info: {
+    status: string;
+    last_checkup: string;
+    conditions: string[];
+    medications: string[];
+    dietary_restrictions: string;
+  };
+  work_info: {
+    assignment: string;
+    start_date: string;
+    hours_per_week: number;
+    wage_rate: number;
+    performance: string;
+  };
+  legal_info: {
+    case_number: string;
+    sentence: string;
+    next_court_date: string;
+    parole_eligibility_date: string;
+  };
+  behavior_info: {
+    conduct: string;
+    last_incident: string | null;
+    privileges: string[];
+    restrictions: string[];
+  };
+}
 
 export default function PrisonerInfoPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [prisoner, setPrisoner] = useState<Prisoner | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [connectedPrisoners, setConnectedPrisoners] = useState<Prisoner[]>([]);
+
+  useEffect(() => {
+    // Redirect if not logged in or not a family member
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    if (user.role !== 'family') {
+      router.push('/app/jailer/prisoners');
+      return;
+    }
+
+    const fetchConnectedPrisoners = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/family/prisoners', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch connected prisoners');
+        }
+        const data = await response.json();
+        setConnectedPrisoners(data);
+        
+        // If there are connected prisoners, fetch the first one's details
+        if (data.length > 0) {
+          fetchPrisoner(data[0].id);
+        } else {
+          setLoading(false);
+          setError("No prisoners connected to your account. Please contact the jailer to connect a prisoner.");
+        }
+      } catch (err: any) {
+        console.error('Error fetching connected prisoners:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    const fetchPrisoner = async (prisonerId: number) => {
+      try {
+        setLoading(true);
+        const data = await prisonersApi.getById(prisonerId) as Prisoner;
+        setPrisoner(data);
+      } catch (err: any) {
+        console.error('Error fetching prisoner:', err);
+        setError(err.response?.data?.message || err.message || "Failed to fetch prisoner details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchConnectedPrisoners();
+  }, [user, router]);
+
+  if (loading) {
+    return (
+      <div className="p-8 space-y-4">
+        <Skeleton className="h-8 w-[200px]" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-[150px]" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="space-y-2">
+                      <Skeleton className="h-4 w-[100px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (!prisoner) {
+    return (
+      <div className="p-8">
+        <Alert>
+          <AlertTitle>Not Found</AlertTitle>
+          <AlertDescription>Prisoner information not found</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Prisoner Information</h2>
-        <p className="text-muted-foreground">
-          Detailed information about the prisoner
-        </p>
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Prisoner Information</h1>
+        {connectedPrisoners.length > 1 && (
+          <div className="flex gap-2">
+            {connectedPrisoners.map((p) => (
+              <Button
+                key={p.id}
+                variant={p.id === prisoner.id ? "default" : "outline"}
+                onClick={() => router.push(`/app/family/prisoner-info?id=${p.id}`)}
+              >
+                {p.name}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Prisoner ID</p>
+                <p>{prisoner.prisoner_id}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Name</p>
+                <p>{prisoner.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Age</p>
+                <p>{prisoner.age}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Gender</p>
+                <p>{prisoner.gender}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Cell Number</p>
+                <p>{prisoner.cell_number}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Status</p>
+                <p>{prisoner.status}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Category</p>
+                <p>{prisoner.category}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Admission Date</p>
+                <p>{new Date(prisoner.admission_date).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Expected Release Date</p>
+                <p>{new Date(prisoner.expected_release_date).toLocaleDateString()}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Health Information */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Badge variant="outline" className="bg-green-100 text-green-800">
-              {prisonerData.basicInfo.status}
-            </Badge>
+          <CardHeader>
+            <CardTitle>Health Information</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{prisonerData.basicInfo.category}</div>
-            <p className="text-xs text-muted-foreground">
-              Cell: {prisonerData.basicInfo.cellNumber}
-            </p>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Status</p>
+                <p>{prisoner.health_info?.status}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Last Checkup</p>
+                <p>{new Date(prisoner.health_info?.last_checkup).toLocaleDateString()}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Conditions</p>
+                <p>{prisoner.health_info?.conditions?.join(", ") || "None"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Medications</p>
+                <p>{prisoner.health_info?.medications?.join(", ") || "None"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Dietary Restrictions</p>
+                <p>{prisoner.health_info?.dietary_restrictions || "None"}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Work Information */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Health Status</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Work Information</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{prisonerData.healthInfo.status}</div>
-            <p className="text-xs text-muted-foreground">
-              Last checkup: {prisonerData.healthInfo.lastCheckup}
-            </p>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Assignment</p>
+                <p>{prisoner.work_info?.assignment}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Start Date</p>
+                <p>{new Date(prisoner.work_info?.start_date).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Hours per Week</p>
+                <p>{prisoner.work_info?.hours_per_week}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Wage Rate</p>
+                <p>${prisoner.work_info?.wage_rate?.toFixed(2)}/hour</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Performance</p>
+                <p>{prisoner.work_info?.performance}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Legal Information */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Work Assignment</CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Legal Information</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{prisonerData.workInfo.currentAssignment}</div>
-            <p className="text-xs text-muted-foreground">
-              {prisonerData.workInfo.hoursPerWeek} hours/week
-            </p>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Case Number</p>
+                <p>{prisoner.legal_info?.case_number}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Sentence</p>
+                <p>{prisoner.legal_info?.sentence}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Next Court Date</p>
+                <p>{new Date(prisoner.legal_info?.next_court_date).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Parole Eligibility Date</p>
+                <p>{new Date(prisoner.legal_info?.parole_eligibility_date).toLocaleDateString()}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Behavior Information */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Next Court Date</CardTitle>
-            <Scale className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Behavior Information</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{prisonerData.legalInfo.nextCourtDate}</div>
-            <p className="text-xs text-muted-foreground">
-              {prisonerData.legalInfo.remainingTime} remaining
-            </p>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Conduct</p>
+                <p>{prisoner.behavior_info?.conduct}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Last Incident</p>
+                <p>{prisoner.behavior_info?.last_incident || "None"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Privileges</p>
+                <p>{prisoner.behavior_info?.privileges?.join(", ") || "None"}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-sm font-medium text-gray-500">Restrictions</p>
+                <p>{prisoner.behavior_info?.restrictions?.join(", ") || "None"}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
-
-      <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="basic">Basic Information</TabsTrigger>
-          <TabsTrigger value="health">Health</TabsTrigger>
-          <TabsTrigger value="work">Work & Education</TabsTrigger>
-          <TabsTrigger value="legal">Legal</TabsTrigger>
-          <TabsTrigger value="behavior">Behavior</TabsTrigger>
-          <TabsTrigger value="visits">Visit History</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="basic" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Personal details and current status</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Prisoner ID</span>
-                  <span>{prisonerData.basicInfo.id}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Name</span>
-                  <span>{prisonerData.basicInfo.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Age</span>
-                  <span>{prisonerData.basicInfo.age} years</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Gender</span>
-                  <span>{prisonerData.basicInfo.gender}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Admission Date</span>
-                  <span>{prisonerData.basicInfo.admissionDate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Expected Release</span>
-                  <span>{prisonerData.basicInfo.expectedReleaseDate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Security Category</span>
-                  <span>{prisonerData.basicInfo.category}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Cell Number</span>
-                  <span>{prisonerData.basicInfo.cellNumber}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="health" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Health Information</CardTitle>
-              <CardDescription>Medical status and conditions</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Current Status</span>
-                  <Badge variant="outline" className="bg-green-100 text-green-800">
-                    {prisonerData.healthInfo.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Last Checkup</span>
-                  <span>{prisonerData.healthInfo.lastCheckup}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Medical Conditions</span>
-                  <span>{prisonerData.healthInfo.conditions.join(", ") || "None"}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Medications</span>
-                  <span>{prisonerData.healthInfo.medications.join(", ") || "None"}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Dietary Restrictions</span>
-                  <span>{prisonerData.healthInfo.dietaryRestrictions}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="work" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Work & Education</CardTitle>
-              <CardDescription>Current assignments and performance</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Current Assignment</span>
-                  <span>{prisonerData.workInfo.currentAssignment}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Start Date</span>
-                  <span>{prisonerData.workInfo.startDate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Hours per Week</span>
-                  <span>{prisonerData.workInfo.hoursPerWeek}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Wage Rate</span>
-                  <span>{prisonerData.workInfo.wage}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Performance</span>
-                  <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                    {prisonerData.workInfo.performance}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="legal" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Legal Information</CardTitle>
-              <CardDescription>Case details and sentence information</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Case Number</span>
-                  <span>{prisonerData.legalInfo.caseNumber}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Sentence</span>
-                  <span>{prisonerData.legalInfo.sentence}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Remaining Time</span>
-                  <span>{prisonerData.legalInfo.remainingTime}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Next Court Date</span>
-                  <span>{prisonerData.legalInfo.nextCourtDate}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Parole Eligibility</span>
-                  <span>{prisonerData.legalInfo.paroleEligibility}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="behavior" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Behavior & Privileges</CardTitle>
-              <CardDescription>Conduct and available privileges</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Conduct</span>
-                  <Badge variant="outline" className="bg-green-100 text-green-800">
-                    {prisonerData.behaviorInfo.conduct}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Last Incident</span>
-                  <span>{prisonerData.behaviorInfo.lastIncident}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Privileges</span>
-                  <div className="flex flex-wrap gap-1">
-                    {prisonerData.behaviorInfo.privileges.map((privilege) => (
-                      <Badge key={privilege} variant="secondary">
-                        {privilege}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Restrictions</span>
-                  <span>{prisonerData.behaviorInfo.restrictions}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="visits" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Visit History</CardTitle>
-              <CardDescription>Recent visits and their status</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {prisonerData.visitHistory.map((visit, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
-                  >
-                    <div>
-                      <p className="font-medium">{visit.type}</p>
-                      <p className="text-sm text-muted-foreground">{visit.date}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{visit.duration}</p>
-                      <Badge variant="outline" className="bg-green-100 text-green-800">
-                        {visit.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 } 

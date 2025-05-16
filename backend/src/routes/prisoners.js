@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/db');
+const jwt = require('jsonwebtoken');
 
 // Add this utility function at the top after imports
 function fixArrayField(val) {
@@ -13,6 +14,16 @@ function fixArrayField(val) {
 // Get all prisoners (jailer only)
 router.get('/', async (req, res) => {
   try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'jailer') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
     const prisoners = await pool.query(`
       SELECT p.*, 
              h.status as health_status,
@@ -38,7 +49,36 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    let query;
+
+    if (token) {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded.role === 'family') {
+        query = `
+          SELECT p.*, 
+                 h.*,
+                 w.*,
+                 l.*,
+                 b.*
+          FROM prisoners p
+          LEFT JOIN health_records h ON p.id = h.prisoner_id
+          LEFT JOIN work_assignments w ON p.id = w.prisoner_id
+          LEFT JOIN legal_info l ON p.id = l.prisoner_id
+          LEFT JOIN behavior_records b ON p.id = b.prisoner_id
+          JOIN family_connections fc ON p.id = fc.prisoner_id
+          WHERE p.id = $1 AND fc.family_member_id = $2
+        `;
+        const prisoner = await pool.query(query, [id, decoded.id]);
+        if (prisoner.rows.length === 0) {
+          return res.status(404).json({ message: 'Prisoner not found or not authorized' });
+        }
+        return res.json(prisoner.rows[0]);
+      }
+    }
+
+    // Default query for jailer or no token
+    query = `
       SELECT p.*, 
              h.*,
              w.*,

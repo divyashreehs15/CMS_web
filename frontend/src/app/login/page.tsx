@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface LoginResponse {
   token: string;
@@ -18,7 +19,7 @@ interface LoginResponse {
 export default function LoginPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"jailer" | "family">("jailer");
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,9 +28,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await apiService.auth.login(username, password) as LoginResponse;
+      const response = await apiService.auth.login(email, password) as LoginResponse;
+      
+      // Store token and user data
       localStorage.setItem("token", response.token);
       localStorage.setItem("user", JSON.stringify(response.user));
+      
+      // Set default authorization header for future requests
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.token}`;
       
       // Redirect based on role
       if (response.user.role === "jailer") {
@@ -40,6 +46,7 @@ export default function LoginPage() {
       
       toast.success("Login successful!");
     } catch (error: any) {
+      console.error('Login error:', error);
       toast.error(error.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false);
@@ -62,12 +69,12 @@ export default function LoginPage() {
             <TabsContent value={activeTab}>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>

@@ -12,13 +12,23 @@ interface User {
 }
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  user: {
+    id: number;
+    email: string;
+    role: string;
+    name: string;
+  } | null;
+  token: string | null;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  isLoading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  token: null,
+  login: async () => {},
+  logout: () => {},
+});
 
 // Demo credentials
 const DEMO_CREDENTIALS = {
@@ -45,53 +55,52 @@ const DEMO_CREDENTIALS = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<AuthContextType['user']>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is stored in localStorage
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
+    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+    if (storedUser && storedToken) {
       setUser(JSON.parse(storedUser));
+      setToken(storedToken);
     }
-    setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Check credentials against demo data
-    const jailerCreds = DEMO_CREDENTIALS.jailer;
-    const familyCreds = DEMO_CREDENTIALS.family;
+      if (!response.ok) {
+        throw new Error('Invalid credentials');
+      }
 
-    if (email === jailerCreds.email && password === jailerCreds.password) {
-      setUser(jailerCreds.user);
-      localStorage.setItem("user", JSON.stringify(jailerCreds.user));
-      setIsLoading(false);
-      return true;
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
+      setToken(data.token);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
-
-    if (email === familyCreds.email && password === familyCreds.password) {
-      setUser(familyCreds.user);
-      localStorage.setItem("user", JSON.stringify(familyCreds.user));
-      setIsLoading(false);
-      return true;
-    }
-
-    setIsLoading(false);
-    return false;
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    localStorage.removeItem("user");
+    setToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

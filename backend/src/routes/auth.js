@@ -7,7 +7,7 @@ const pool = require('../db/db');
 
 // Register new user
 router.post('/register', [
-  body('username').isLength({ min: 3 }).trim().escape(),
+  body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('role').isIn(['jailer', 'family'])
 ], async (req, res) => {
@@ -17,12 +17,12 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, password, role } = req.body;
+    const { email, password, role } = req.body;
 
     // Check if user exists
     const userExists = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
+      'SELECT * FROM users WHERE email = $1',
+      [email]
     );
 
     if (userExists.rows.length > 0) {
@@ -35,8 +35,8 @@ router.post('/register', [
 
     // Create user
     const newUser = await pool.query(
-      'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
-      [username, hashedPassword, role]
+      'INSERT INTO users (email, password, role) VALUES ($1, $2, $3) RETURNING id, email, role',
+      [email, hashedPassword, role]
     );
 
     // Create token
@@ -50,7 +50,7 @@ router.post('/register', [
       token,
       user: {
         id: newUser.rows[0].id,
-        username: newUser.rows[0].username,
+        email: newUser.rows[0].email,
         role: newUser.rows[0].role
       }
     });
@@ -62,7 +62,7 @@ router.post('/register', [
 
 // Login user
 router.post('/login', [
-  body('username').exists(),
+  body('email').isEmail().normalizeEmail(),
   body('password').exists()
 ], async (req, res) => {
   try {
@@ -71,12 +71,51 @@ router.post('/login', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    // Check if user exists
+    // Demo credentials for testing
+    const DEMO_CREDENTIALS = {
+      'family@demo.com': {
+        password: 'family123',
+        user: {
+          id: 2,
+          email: 'family@demo.com',
+          role: 'family',
+          name: 'Family Member'
+        }
+      },
+      'jailer@demo.com': {
+        password: 'jailer123',
+        user: {
+          id: 1,
+          email: 'jailer@demo.com',
+          role: 'jailer',
+          name: 'Jailer'
+        }
+      }
+    };
+
+    // Check if it's a demo account
+    if (DEMO_CREDENTIALS[email]) {
+      if (password === DEMO_CREDENTIALS[email].password) {
+        const token = jwt.sign(
+          { id: DEMO_CREDENTIALS[email].user.id, role: DEMO_CREDENTIALS[email].user.role },
+          process.env.JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+
+        return res.json({
+          token,
+          user: DEMO_CREDENTIALS[email].user
+        });
+      }
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Regular database authentication
     const user = await pool.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
+      'SELECT * FROM users WHERE email = $1',
+      [email]
     );
 
     if (user.rows.length === 0) {
@@ -100,8 +139,9 @@ router.post('/login', [
       token,
       user: {
         id: user.rows[0].id,
-        username: user.rows[0].username,
-        role: user.rows[0].role
+        email: user.rows[0].email,
+        role: user.rows[0].role,
+        name: user.rows[0].name
       }
     });
   } catch (err) {
@@ -113,14 +153,14 @@ router.post('/login', [
 // Get current user
 router.get('/me', async (req, res) => {
   try {
-    const token = req.header('x-auth-token');
+    const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ message: 'No token, authorization denied' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await pool.query(
-      'SELECT id, username, role FROM users WHERE id = $1',
+      'SELECT id, email, role FROM users WHERE id = $1',
       [decoded.id]
     );
 
@@ -129,6 +169,32 @@ router.get('/me', async (req, res) => {
     }
 
     res.json(user.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all family members (for jailers)
+router.get('/family-members', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'jailer') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const familyMembers = await pool.query(
+      'SELECT id, email, name, role FROM users WHERE role = $1',
+      ['family']
+    );
+
+    res.json(familyMembers.rows);
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });

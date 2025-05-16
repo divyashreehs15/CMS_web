@@ -3,7 +3,7 @@ import axios from 'axios';
 const API_URL = 'http://localhost:5000/api';
 
 // Create axios instance with default config
-const api = axios.create({
+export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -133,15 +133,20 @@ export interface Wage {
   status: string;
 }
 
+interface FamilyConnectionData {
+  family_member_id: number;
+  prisoner_id: number;
+}
+
 // Auth API
 export const authApi = {
-  register: async (username: string, password: string, role: 'jailer' | 'family') => {
-    const response = await api.post('/auth/register', { username, password, role });
+  register: async (email: string, password: string, role: 'jailer' | 'family') => {
+    const response = await api.post('/auth/register', { email, password, role });
     return response.data;
   },
 
-  login: async (username: string, password: string) => {
-    const response = await api.post('/auth/login', { username, password });
+  login: async (email: string, password: string) => {
+    const response = await api.post('/auth/login', { email, password });
     return response.data;
   },
 
@@ -156,9 +161,13 @@ export const prisonersApi = {
   getAll: async () => {
     try {
       const response = await api.get('/prisoners');
+      console.log('Prisoners API response:', response.data); // Debug log
+      if (!Array.isArray(response.data)) {
+        throw new Error('Invalid response format from prisoners API');
+      }
       return response.data;
     } catch (error: any) {
-      console.error('Error fetching prisoners:', error.response?.data || error.message);
+      console.error('Error in prisonersApi.getAll:', error);
       throw error;
     }
   },
@@ -406,6 +415,26 @@ export const wagesApi = {
   },
 };
 
+// Family API
+export const familyApi = {
+  getConnectedPrisoners: async () => {
+    const response = await api.get('/family/prisoners');
+    return response.data;
+  },
+  connectPrisoner: async (data: FamilyConnectionData) => {
+    const response = await api.post('/family/connect', data);
+    return response.data;
+  },
+  getConnections: async () => {
+    const response = await api.get('/family/connections');
+    return response.data;
+  },
+  deleteConnection: async (connectionId: number) => {
+    const response = await api.delete(`/family/connections/${connectionId}`);
+    return response.data;
+  }
+};
+
 // Export all APIs
 export const apiService = {
   auth: authApi,
@@ -416,6 +445,7 @@ export const apiService = {
   behavior: behaviorApi,
   visits: visitsApi,
   wages: wagesApi,
+  family: familyApi,
 };
 
 export default apiService; 

@@ -35,6 +35,11 @@ export function AppSidebar() {
       icon: Users,
     },
     {
+      title: "Family Connections",
+      href: "/app/jailer/family-connections",
+      icon: Users,
+    },
+    {
       title: "Appointments",
       href: "/app/jailer/appointments",
       icon: Calendar,

@@ -35,6 +35,7 @@ const healthRoutes = require('./routes/health');
 const behaviorRoutes = require('./routes/behavior');
 const workRoutes = require('./routes/work');
 const legalRoutes = require('./routes/legal');
+const familyRoutes = require('./routes/family');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/prisoners', prisonerRoutes);
@@ -44,6 +45,7 @@ app.use('/api/health', healthRoutes);
 app.use('/api/behavior', behaviorRoutes);
 app.use('/api/work', workRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/family', familyRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

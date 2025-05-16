@@ -61,10 +61,12 @@ export default function PrisonerDetailsPage({ params }: { params: { id: string }
   useEffect(() => {
     const fetchPrisoner = async () => {
       try {
+        setLoading(true);
         const data = await prisonersApi.getById(parseInt(params.id)) as Prisoner;
         setPrisoner(data);
       } catch (err: any) {
-        setError(err.message || "Failed to fetch prisoner details");
+        console.error('Error fetching prisoner:', err);
+        setError(err.response?.data?.message || err.message || "Failed to fetch prisoner details");
       } finally {
         setLoading(false);
       }
@@ -85,7 +87,11 @@ export default function PrisonerDetailsPage({ params }: { params: { id: string }
   };
 
   if (loading) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
   if (error) {
@@ -95,12 +101,35 @@ export default function PrisonerDetailsPage({ params }: { params: { id: string }
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
+        <div className="mt-4">
+          <Link href="/app/jailer/prisoners">
+            <Button variant="outline" className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Prisoners
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!prisoner) {
-    return <div className="p-8">Prisoner not found</div>;
+    return (
+      <div className="p-8">
+        <Alert>
+          <AlertTitle>Not Found</AlertTitle>
+          <AlertDescription>Prisoner not found</AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Link href="/app/jailer/prisoners">
+            <Button variant="outline" className="gap-2">
+              <ArrowLeft className="w-4 h-4" />
+              Back to Prisoners
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
