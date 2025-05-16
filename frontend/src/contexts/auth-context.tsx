@@ -34,7 +34,7 @@ export const AuthContext = createContext<AuthContextType>({
 const DEMO_CREDENTIALS = {
   jailer: {
     email: "karthik@demo.com",
-    password: "karthik@LoveMansik",
+    password: "karthik@Mansik",
     user: {
       id: "1",
       name: "Karthik Y H",
