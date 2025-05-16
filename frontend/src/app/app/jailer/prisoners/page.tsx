@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { apiService, Prisoner } from "@/lib/api";
-import { Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface PrisonerFormData {
   name: string;
@@ -382,6 +383,14 @@ export default function PrisonersPage() {
                   <TableCell>{new Date(prisoner.sentence_end).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Link href={`/app/jailer/prisoners/${prisoner.id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <Button
                         variant="outline"
                         size="sm"
