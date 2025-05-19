@@ -13,18 +13,43 @@ app.use(express.json());
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false
-  }
+    rejectUnauthorized: false,
+    sslmode: 'require'
+  },
+  max: 20,
+  idleTimeoutMillis: 60000,
+  connectionTimeoutMillis: 30000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000
 });
 
-// Test database connection
-pool.connect((err, client, release) => {
-  if (err) {
-    return console.error('Error acquiring client', err.stack);
+// Test database connection with retries
+async function testConnection(retries = 3) {
+  while (retries > 0) {
+    try {
+      const client = await pool.connect();
+      console.log('Connected to PostgreSQL database');
+      client.release();
+      return true;
+    } catch (err) {
+      console.error(`Database connection attempt failed (attempts left: ${retries - 1}):`, err);
+      retries--;
+      
+      if (retries === 0) {
+        console.error('Failed to connect to database after multiple attempts');
+        console.error('Please check your DATABASE_URL in .env file');
+        console.error('Make sure your Neon Tech connection string is correct and the project is active');
+        return false;
+      }
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
-  console.log('Connected to PostgreSQL database');
-  release();
-});
+}
+
+// Test connection on startup
+testConnection();
 
 // Routes
 const authRoutes = require('./routes/auth');

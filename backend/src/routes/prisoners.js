@@ -40,8 +40,11 @@ router.get('/', async (req, res) => {
 
     res.json(prisoners.rows);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching prisoners:', err);
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token has expired', code: 'TOKEN_EXPIRED' });
+    }
+    res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
 
@@ -106,6 +109,7 @@ router.get('/:id', async (req, res) => {
 
 // Create new prisoner (jailer only)
 router.post('/', async (req, res) => {
+  const client = await pool.connect();
   try {
     const {
       prisoner_id,
@@ -122,6 +126,19 @@ router.post('/', async (req, res) => {
       legal_info,
       behavior_info
     } = req.body;
+
+    // Check if prisoner_id already exists
+    const existingPrisoner = await client.query(
+      'SELECT id FROM prisoners WHERE prisoner_id = $1',
+      [prisoner_id]
+    );
+
+    if (existingPrisoner.rows.length > 0) {
+      return res.status(400).json({ 
+        message: 'Prisoner ID already exists',
+        code: 'DUPLICATE_PRISONER_ID'
+      });
+    }
 
     // Fix array fields for health_info if present
     let fixedHealthInfo = health_info;
@@ -142,100 +159,105 @@ router.post('/', async (req, res) => {
       };
     }
 
-    // Start transaction
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
+    await client.query('BEGIN');
 
-      // Insert prisoner
-      const prisonerResult = await client.query(
-        `INSERT INTO prisoners (
-          prisoner_id, name, age, gender, cell_number,
-          admission_date, expected_release_date, status, category
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [prisoner_id, name, age, gender, cell_number, admission_date, expected_release_date, status, category]
+    // Insert prisoner
+    const prisonerResult = await client.query(
+      `INSERT INTO prisoners (
+        prisoner_id, name, age, gender, cell_number,
+        admission_date, expected_release_date, status, category
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [prisoner_id, name, age, gender, cell_number, admission_date, expected_release_date, status, category]
+    );
+
+    const prisonerId = prisonerResult.rows[0].id;
+
+    // Insert health record
+    if (fixedHealthInfo) {
+      await client.query(
+        `INSERT INTO health_records (
+          prisoner_id, status, last_checkup, conditions, medications, dietary_restrictions
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          prisonerId,
+          fixedHealthInfo.status || null,
+          fixedHealthInfo.last_checkup || null,
+          fixedHealthInfo.conditions || '{}',
+          fixedHealthInfo.medications || '{}',
+          fixedHealthInfo.dietary_restrictions || '{}'
+        ]
       );
-
-      const prisonerId = prisonerResult.rows[0].id;
-
-      // Insert health record
-      if (fixedHealthInfo) {
-        await client.query(
-          `INSERT INTO health_records (
-            prisoner_id, status, last_checkup, conditions, medications, dietary_restrictions
-          ) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [
-            prisonerId,
-            fixedHealthInfo.status || null,
-            fixedHealthInfo.last_checkup || null,
-            fixedHealthInfo.conditions || '{}',
-            fixedHealthInfo.medications || '{}',
-            fixedHealthInfo.dietary_restrictions || '{}'
-          ]
-        );
-      }
-
-      // Insert work assignment
-      if (work_info) {
-        await client.query(
-          `INSERT INTO work_assignments (
-            prisoner_id, assignment, start_date, hours_per_week, wage_rate, performance
-          ) VALUES ($1, $2, $3, $4, $5, $6)`,
-          [
-            prisonerId,
-            work_info.assignment || 'none',
-            work_info.start_date || new Date().toISOString().split('T')[0],
-            work_info.hours_per_week || 8,
-            work_info.wage_rate || 5.00,
-            work_info.performance || 'pending'
-          ]
-        );
-      }
-
-      // Insert legal info
-      if (legal_info) {
-        await client.query(
-          `INSERT INTO legal_info (
-            prisoner_id, case_number, sentence, next_court_date, parole_eligibility_date
-          ) VALUES ($1, $2, $3, $4, $5)`,
-          [
-            prisonerId,
-            legal_info.case_number || null,
-            legal_info.sentence || null,
-            legal_info.next_court_date || null,
-            legal_info.parole_eligibility_date || null
-          ]
-        );
-      }
-
-      // Insert behavior record
-      if (fixedBehaviorInfo) {
-        await client.query(
-          `INSERT INTO behavior_records (
-            prisoner_id, conduct, last_incident, privileges, restrictions
-          ) VALUES ($1, $2, $3, $4, $5)`,
-          [
-            prisonerId,
-            fixedBehaviorInfo.conduct || null,
-            fixedBehaviorInfo.last_incident || null,
-            fixedBehaviorInfo.privileges || '{}',
-            fixedBehaviorInfo.restrictions || '{}'
-          ]
-        );
-      }
-
-      await client.query('COMMIT');
-      res.status(201).json({ message: 'Prisoner created successfully', id: prisonerId });
-    } catch (err) {
-      await client.query('ROLLBACK');
-      console.error('Error creating prisoner:', err);
-      res.status(500).json({ message: 'Server error', error: err.message });
-    } finally {
-      client.release();
     }
+
+    // Insert work assignment
+    if (work_info) {
+      await client.query(
+        `INSERT INTO work_assignments (
+          prisoner_id, assignment, start_date, hours_per_week, wage_rate, performance
+        ) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          prisonerId,
+          work_info.assignment || 'none',
+          work_info.start_date || new Date().toISOString().split('T')[0],
+          work_info.hours_per_week || 8,
+          work_info.wage_rate || 5.00,
+          work_info.performance || 'pending'
+        ]
+      );
+    }
+
+    // Insert legal info
+    if (legal_info) {
+      await client.query(
+        `INSERT INTO legal_info (
+          prisoner_id, case_number, sentence, next_court_date, parole_eligibility_date
+        ) VALUES ($1, $2, $3, $4, $5)`,
+        [
+          prisonerId,
+          legal_info.case_number || null,
+          legal_info.sentence || null,
+          legal_info.next_court_date || null,
+          legal_info.parole_eligibility_date || null
+        ]
+      );
+    }
+
+    // Insert behavior record
+    if (fixedBehaviorInfo) {
+      await client.query(
+        `INSERT INTO behavior_records (
+          prisoner_id, conduct, last_incident, privileges, restrictions
+        ) VALUES ($1, $2, $3, $4, $5)`,
+        [
+          prisonerId,
+          fixedBehaviorInfo.conduct || null,
+          fixedBehaviorInfo.last_incident || null,
+          fixedBehaviorInfo.privileges || '{}',
+          fixedBehaviorInfo.restrictions || '{}'
+        ]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.status(201).json({ message: 'Prisoner created successfully', id: prisonerId });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).json({ message: 'Server error' });
+    await client.query('ROLLBACK');
+    console.error('Error creating prisoner:', err);
+    
+    if (err.code === '23505') { // Unique violation
+      return res.status(400).json({ 
+        message: 'Prisoner ID already exists',
+        code: 'DUPLICATE_PRISONER_ID'
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: err.message,
+      code: err.code
+    });
+  } finally {
+    client.release();
   }
 });
 
