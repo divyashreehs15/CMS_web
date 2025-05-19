@@ -99,7 +99,8 @@ export default function PrisonersPage() {
         admission_date: formData.sentence_start,
         expected_release_date: formData.sentence_end,
         status: 'active',
-        category: formData.crime_type.trim(),
+        category: formData.security_level,
+        crime_type: formData.crime_type.trim(),
         health_info: {
           status: 'healthy',
           last_checkup: new Date().toISOString().split('T')[0],
@@ -204,7 +205,8 @@ export default function PrisonersPage() {
   const filteredPrisoners = prisoners.filter(prisoner =>
     prisoner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     prisoner.prisoner_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    prisoner.cell_number.toLowerCase().includes(searchQuery.toLowerCase())
+    prisoner.cell_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    prisoner.crime_type.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoading) {
@@ -360,6 +362,7 @@ export default function PrisonersPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Prisoner ID</TableHead>
                 <TableHead>Cell Number</TableHead>
+                <TableHead>Crime Type</TableHead>
                 <TableHead>Security Level</TableHead>
                 <TableHead>Sentence End</TableHead>
                 <TableHead>Actions</TableHead>
@@ -371,6 +374,7 @@ export default function PrisonersPage() {
                   <TableCell>{prisoner.name}</TableCell>
                   <TableCell>{prisoner.prisoner_id}</TableCell>
                   <TableCell>{prisoner.cell_number}</TableCell>
+                  <TableCell>{prisoner.crime_type}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       prisoner.security_level === "high" ? "bg-red-100 text-red-800" :

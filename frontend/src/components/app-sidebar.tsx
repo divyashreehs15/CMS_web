@@ -15,9 +15,14 @@ import {
   LogOut,
   BarChart3,
   UserCircle,
+  Gavel,
 } from "lucide-react";
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  variant?: "inset";
+}
+
+export function AppSidebar({ variant }: AppSidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
@@ -57,7 +62,7 @@ export function AppSidebar() {
     {
       title: "Court Hearings",
       href: "/app/jailer/court",
-      icon: FileText,
+      icon: Gavel,
     },
     {
       title: "Analytics",
@@ -97,7 +102,10 @@ export function AppSidebar() {
   const navItems = user.role === "jailer" ? jailerNavItems : familyNavItems;
 
   return (
-    <div className="flex h-screen w-64 flex-col border-r bg-background">
+    <div className={cn(
+      "flex h-screen w-64 flex-col border-r bg-background",
+      variant === "inset" && "border-0"
+    )}>
       <div className="border-b p-4">
         <h2 className="text-lg font-semibold tracking-tight">
           Prison Management

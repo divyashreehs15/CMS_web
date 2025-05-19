@@ -39,7 +39,7 @@ export default function LoginPage() {
       
       // Redirect based on role
       if (response.user.role === "jailer") {
-        router.push("/app/jailer/analytics");
+        router.push("/app/jailer");
       } else {
         router.push("/app/family/analytics");
       }
@@ -54,38 +54,40 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Card className="w-[400px]">
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Card className="w-[400px] border-border">
         <CardHeader>
-          <CardTitle>Prison Management System</CardTitle>
-          <CardDescription>Login to access the system</CardDescription>
+          <CardTitle className="text-foreground">Prison Management System</CardTitle>
+          <CardDescription className="text-muted-foreground">Login to access the system</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="jailer" value={activeTab} onValueChange={(value) => setActiveTab(value as "jailer" | "family")}>
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 bg-muted">
               <TabsTrigger value="jailer">Jailer</TabsTrigger>
               <TabsTrigger value="family">Family</TabsTrigger>
             </TabsList>
             <TabsContent value={activeTab}>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-foreground">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    className="bg-background border-border"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-foreground">Password</Label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    className="bg-background border-border"
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>

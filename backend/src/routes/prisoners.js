@@ -29,7 +29,8 @@ router.get('/', async (req, res) => {
              h.status as health_status,
              w.assignment as current_assignment,
              l.case_number,
-             b.conduct
+             b.conduct,
+             p.crime_type
       FROM prisoners p
       LEFT JOIN health_records h ON p.id = h.prisoner_id
       LEFT JOIN work_assignments w ON p.id = w.prisoner_id
@@ -121,6 +122,7 @@ router.post('/', async (req, res) => {
       expected_release_date,
       status,
       category,
+      crime_type,
       health_info,
       work_info,
       legal_info,
@@ -165,9 +167,9 @@ router.post('/', async (req, res) => {
     const prisonerResult = await client.query(
       `INSERT INTO prisoners (
         prisoner_id, name, age, gender, cell_number,
-        admission_date, expected_release_date, status, category
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-      [prisoner_id, name, age, gender, cell_number, admission_date, expected_release_date, status, category]
+        admission_date, expected_release_date, status, category, crime_type
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [prisoner_id, name, age, gender, cell_number, admission_date, expected_release_date, status, category, crime_type]
     );
 
     const prisonerId = prisonerResult.rows[0].id;
@@ -272,6 +274,7 @@ router.put('/:id', async (req, res) => {
       cell_number,
       status,
       category,
+      crime_type,
       health_info,
       work_info,
       legal_info,
@@ -291,9 +294,10 @@ router.put('/:id', async (req, res) => {
           gender = $3,
           cell_number = $4,
           status = $5,
-          category = $6
-        WHERE id = $7`,
-        [name, age, gender, cell_number, status, category, id]
+          category = $6,
+          crime_type = $7
+        WHERE id = $8`,
+        [name, age, gender, cell_number, status, category, crime_type, id]
       );
 
       // Update health record
@@ -526,6 +530,53 @@ router.post('/add', async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete prisoner (jailer only)
+router.delete('/:id', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token, authorization denied' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'jailer') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Start transaction
+    await client.query('BEGIN');
+
+    // Delete related records first
+    await client.query('DELETE FROM health_records WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM work_assignments WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM legal_info WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM behavior_records WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM family_connections WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM wages WHERE prisoner_id = $1', [id]);
+    await client.query('DELETE FROM visit_requests WHERE prisoner_id = $1', [id]);
+
+    // Finally delete the prisoner
+    const result = await client.query('DELETE FROM prisoners WHERE id = $1 RETURNING id', [id]);
+
+    if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ message: 'Prisoner not found' });
+    }
+
+    await client.query('COMMIT');
+    res.json({ message: 'Prisoner deleted successfully' });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error deleting prisoner:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  } finally {
+    client.release();
   }
 });
 

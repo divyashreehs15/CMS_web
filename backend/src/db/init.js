@@ -26,21 +26,33 @@ async function initializeDatabase() {
       client = await pool.connect();
       console.log('Connected to database');
 
-      // Read the schema file
-      const schemaPath = path.join(__dirname, 'schema.sql');
-      const schema = fs.readFileSync(schemaPath, 'utf8');
+      // Check if crime_type column exists in prisoners table
+      const checkColumnQuery = `
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'prisoners' 
+        AND column_name = 'crime_type';
+      `;
+      const columnExists = await client.query(checkColumnQuery);
 
-      // Execute the schema
-      await client.query(schema);
-      console.log('Database tables created successfully');
+      if (columnExists.rows.length === 0) {
+        console.log('Adding crime_type column to prisoners table...');
+        await client.query(`
+          ALTER TABLE prisoners 
+          ADD COLUMN crime_type VARCHAR(100) NOT NULL DEFAULT 'Unknown';
+        `);
+        console.log('crime_type column added successfully');
+      } else {
+        console.log('crime_type column already exists');
+      }
 
-      // Create a default admin user
+      // Create a default admin user if it doesn't exist
       const hashedPassword = '$2a$10$XOPbrlUPQdwdJUpSrIF6X.LbE14qsMmKGhM1A8W9iqDp0JxSqU9Ue'; // password: admin123
       await client.query(
         'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) ON CONFLICT (username) DO NOTHING',
         ['admin', hashedPassword, 'jailer']
       );
-      console.log('Default admin user created');
+      console.log('Default admin user created or already exists');
 
       process.exit(0);
     } catch (err) {

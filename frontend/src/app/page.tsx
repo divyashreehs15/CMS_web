@@ -12,10 +12,13 @@ const LandingPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      // Redirect to role-specific analytics page
-      router.push(user.role === "jailer" ? "/app/jailer/analytics" : "/app/family/analytics");
+    if (!user) {
+      router.push('/login');
+      return;
     }
+    
+    // Redirect to role-specific analytics page
+    router.push(user.role === "jailer" ? "/app/jailer/analytics" : "/app/family/analytics");
   }, [user, router]);
 
   // Show landing page only for non-authenticated users

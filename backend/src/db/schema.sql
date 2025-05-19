@@ -19,6 +19,7 @@ CREATE TABLE prisoners (
     expected_release_date DATE NOT NULL,
     status VARCHAR(20) NOT NULL,
     category VARCHAR(20) NOT NULL,
+    crime_type VARCHAR(100) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
