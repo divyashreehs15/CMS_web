@@ -1,4 +1,4 @@
-# Prison Management System (CMS)
+# Prison Management System (Prison Desk)
 
 A full-stack web application designed to streamline prison administration by providing a centralized platform for managing inmate records, legal information, health records, work assignments, wages, behavior, and family interactions. The system offers secure role-based access for jail staff and family members while maintaining data integrity and security through JWT authentication and PostgreSQL.
 
